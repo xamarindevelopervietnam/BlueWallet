@@ -5,6 +5,7 @@ import PropTypes from 'prop-types';
 import { SegwitP2SHWallet, LegacyWallet, HDSegwitP2SHWallet } from '../class';
 let BigNumber = require('bignumber.js');
 let encryption = require('../encryption');
+let bitcoin = require('bitcoinjs-lib');
 
 export default class Selftest extends Component {
   static navigationOptions = () => ({
@@ -38,6 +39,31 @@ export default class Selftest extends Component {
         }
       } else {
         console.warn('skipping RN-specific test');
+      }
+
+      //
+
+      const ElectrumClient = require('electrum-client');
+      const peer = { host: 'electrum.coinucopia.io', ssl: 50002, tcp: 50001, pruning: null, http: null, https: null };
+      console.log('begin connection:', JSON.stringify(peer));
+      let mainClient = new ElectrumClient(peer.tcp, peer.host, 'tcp');
+      // mainClient = new ElectrumClient(peer.ssl, peer.host, 'ssl')
+      try {
+        await mainClient.connect();
+        const ver = await mainClient.server_version('2.7.11', '1.2');
+        console.log('connected to ', ver);
+
+        let addr4elect = 'bc1qwqdg6squsna38e46795at95yu9atm8azzmyvckulcc7kytlcckxswvvzej';
+        let script = bitcoin.address.toOutputScript(addr4elect);
+        let hash = bitcoin.crypto.sha256(script);
+
+        var reverse = require('buffer-reverse');
+        let reversedHash = Buffer.from(reverse(hash));
+        console.log(addr4elect, ' maps to ', reversedHash.toString('hex'));
+        console.log(await mainClient.blockchainScripthash_getBalance(reversedHash.toString('hex')));
+      } catch (e) {
+        console.log('bad connection:', JSON.stringify(peer), e);
+        console.log('electrum failed');
       }
 
       //
@@ -158,7 +184,6 @@ export default class Selftest extends Component {
       ];
 
       let tx = l.createTx(utxo, 0.001, 0.0001, '1QHf8Gp3wfmFiSdEX4FtrssCGR68diN1cj');
-      let bitcoin = require('bitcoinjs-lib');
       let txDecoded = bitcoin.Transaction.fromHex(tx);
       let txid = txDecoded.getId();
 
