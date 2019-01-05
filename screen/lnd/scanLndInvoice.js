@@ -117,36 +117,47 @@ export default class ScanLndInvoice extends React.Component {
     if (!this.state.hasOwnProperty('decoded')) {
       return null;
     }
-    let decoded = this.state.decoded;
 
-    /** @type {LightningCustodianWallet} */
-    let fromWallet = this.state.fromWallet;
+    this.setState(
+      {
+        isPayingInProgress: true,
+      },
+      async () => {
+        let decoded = this.state.decoded;
 
-    let expiresIn = (decoded.timestamp * 1 + decoded.expiry * 1) * 1000; // ms
-    if (+new Date() > expiresIn) {
-      return alert('Invoice expired');
-    }
+        /** @type {LightningCustodianWallet} */
+        let fromWallet = this.state.fromWallet;
 
-    this.setState({
-      isPayingInProgress: true,
-    });
+        let expiresIn = (decoded.timestamp * 1 + decoded.expiry * 1) * 1000; // ms
+        if (+new Date() > expiresIn) {
+          this.setState({ isPayingInProgress: false });
+          return alert('Invoice expired');
+        }
 
-    let start = +new Date();
-    let end;
-    try {
-      await fromWallet.payInvoice(this.state.invoice);
-      end = +new Date();
-    } catch (Err) {
-      console.log(Err.message);
-      this.props.navigation.goBack();
-      return alert('Error');
-    }
+        const currentUserInvoices = await fromWallet.getUserInvoices();
+        if (currentUserInvoices.some(invoice => invoice.payment_hash === decoded.payment_hash)) {
+          this.setState({ isPayingInProgress: false });
+          return alert(loc.lnd.sameWalletAsInvoiceError);
+        }
 
-    console.log('payInvoice took', (end - start) / 1000, 'sec');
-    EV(EV.enum.REMOTE_TRANSACTIONS_COUNT_CHANGED); // someone should fetch txs
+        let start = +new Date();
+        let end;
+        try {
+          await fromWallet.payInvoice(this.state.invoice);
+          end = +new Date();
+        } catch (Err) {
+          console.log(Err.message);
+          this.props.navigation.goBack();
+          return alert('Error');
+        }
 
-    alert('Success');
-    this.props.navigation.goBack();
+        console.log('payInvoice took', (end - start) / 1000, 'sec');
+        EV(EV.enum.REMOTE_TRANSACTIONS_COUNT_CHANGED); // someone should fetch txs
+
+        alert('Success');
+        this.props.navigation.goBack();
+      },
+    );
   }
 
   processTextForInvoice = text => {
@@ -223,27 +234,15 @@ export default class ScanLndInvoice extends React.Component {
             <View
               style={{
                 flexDirection: 'row',
-                borderColor: '#d2d2d2',
-                borderBottomColor: '#d2d2d2',
-                borderWidth: 1.0,
-                borderBottomWidth: 0.5,
-                backgroundColor: '#f5f5f5',
-                minHeight: 44,
-                height: 44,
                 marginHorizontal: 20,
                 alignItems: 'center',
                 marginVertical: 8,
                 borderRadius: 4,
               }}
             >
-              <TextInput
-                onChangeText={text => {}}
-                placeholder={loc.wallets.details.description}
-                numberOfLines={1}
-                value={this.state.hasOwnProperty('decoded') && this.state.decoded !== undefined ? this.state.decoded.description : ''}
-                style={{ flex: 1, marginHorizontal: 8, minHeight: 33, height: 33 }}
-                editable={!this.state.isLoading}
-              />
+              <Text numberOfLines={0} style={{ color: '#81868e', fontWeight: '500', fontSize: 14 }}>
+                {this.state.hasOwnProperty('decoded') && this.state.decoded !== undefined ? this.state.decoded.description : ''}
+              </Text>
             </View>
             {this.state.expiresIn !== undefined && (
               <Text style={{ color: '#81868e', fontSize: 12, left: 20, top: 10 }}>Expires in: {this.state.expiresIn}</Text>
