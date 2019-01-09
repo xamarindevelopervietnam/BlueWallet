@@ -1,6 +1,6 @@
 /* global alert */
 import React, { Component } from 'react';
-import { AsyncStorage, ActivityIndicator, Keyboard, Dimensions, View, TextInput, TouchableWithoutFeedback } from 'react-native';
+import { Alert, AsyncStorage, ActivityIndicator, Keyboard, Dimensions, View, TextInput, TouchableWithoutFeedback } from 'react-native';
 import {
   BlueTextCentered,
   BlueText,
@@ -140,6 +140,7 @@ export default class WalletsAdd extends Component {
                     height: (width - 60) / 3,
                   }}
                   title={loc.wallets.add.create}
+                  disabled={BlueApp.getWallets().some(wallet => wallet.type === LightningCustodianWallet.type)}
                 />
               </View>
             </View>
@@ -180,65 +181,110 @@ export default class WalletsAdd extends Component {
                 alignItems: 'center',
               }}
             >
-              <BlueButton
-                title={loc.wallets.add.create}
-                buttonStyle={{
-                  width: width / 1.5,
-                }}
-                onPress={() => {
-                  setTimeout(async () => {
-                    let w;
+              {!this.state.isLoading ? (
+                <BlueButton
+                  title={loc.wallets.add.create}
+                  buttonStyle={{
+                    width: width / 1.5,
+                  }}
+                  onPress={() => {
+                    this.setState(
+                      { isLoading: true },
+                      async () => {
+                        let w;
 
-                    if (this.state.activeLightning) {
-                      // lightning was selected
+                        if (this.state.activeLightning) {
+                          // eslint-disable-next-line
+                          let hasBitcoinWallet = false;
+                          for (let t of BlueApp.getWallets()) {
+                            if (t.type === LightningCustodianWallet.type) {
+                              // already exist
+                              this.setState({ isLoading: false });
+                              return alert('Only 1 Lightning wallet allowed for now');
+                            } else if (t.type !== LightningCustodianWallet.type) {
+                              hasBitcoinWallet = true;
+                            }
+                          }
 
-                      global.lightning_create_try = global.lightning_create_try || 1;
-                      if (global.lightning_create_try++ < 9 && +new Date() < 1545264000000) return alert('Coming soon');
-                      // eslint-disable-next-line
-                    for (let t of BlueApp.getWallets()) {
-                        if (t.type === LightningCustodianWallet.type) {
-                          // already exist
-                          return alert('Only 1 Ligthning wallet allowed for now');
+                          this.createLightningWallet = async () => {
+                            w = new LightningCustodianWallet();
+                            w.setLabel(this.state.label || w.typeReadable);
+
+                            try {
+                              let lndhub = await AsyncStorage.getItem(AppStorage.LNDHUB);
+                              if (lndhub) {
+                                w.setBaseURI(lndhub);
+                                w.init();
+                              }
+                              await w.createAccount();
+                              await w.authorize();
+                            } catch (Err) {
+                              this.setState({ isLoading: false });
+                              console.warn('lnd create failure', Err);
+                              // giving app, not adding anything
+                            }
+                            A(A.ENUM.CREATED_LIGHTNING_WALLET);
+                            await w.generate();
+                            BlueApp.wallets.push(w);
+                            await BlueApp.saveToDisk();
+                            EV(EV.enum.WALLETS_COUNT_CHANGED);
+                            A(A.ENUM.CREATED_WALLET);
+                            ReactNativeHapticFeedback.trigger('notificationSuccess', false);
+                            this.props.navigation.dismiss();
+                          };
+
+                          if (!hasBitcoinWallet) {
+                            Alert.alert(
+                              loc.wallets.add.lightning,
+                              loc.wallets.createBitcoinWallet,
+                              [
+                                {
+                                  text: loc.send.details.cancel,
+                                  style: 'cancel',
+                                  onPress: () => {
+                                    this.setState({ isLoading: false });
+                                  },
+                                },
+                                {
+                                  text: loc._.ok,
+                                  style: 'default',
+                                  onPress: () => {
+                                    this.createLightningWallet();
+                                  },
+                                },
+                              ],
+                              { cancelable: false },
+                            );
+                          } else {
+                            this.createLightningWallet();
+                          }
+                        } else if (this.state.selectedIndex === 1) {
+                          // btc was selected
+                          // index 1 radio - segwit single address
+                          w = new SegwitP2SHWallet();
+                          w.setLabel(this.state.label || loc.wallets.add.label_new_segwit);
+                        } else {
+                          // zero index radio - HD segwit
+                          w = new HDSegwitP2SHWallet();
+                          w.setLabel((this.state.label || loc.wallets.add.label_new_segwit) + ' HD');
                         }
-                      }
-
-                      w = new LightningCustodianWallet();
-                      w.setLabel(this.state.label || w.typeReadable);
-
-                      try {
-                        let lndhub = await AsyncStorage.getItem(AppStorage.LNDHUB);
-                        if (lndhub) {
-                          w.setBaseURI(lndhub);
-                          w.init();
+                        if (this.state.activeBitcoin) {
+                          await w.generate();
+                          BlueApp.wallets.push(w);
+                          await BlueApp.saveToDisk();
+                          EV(EV.enum.WALLETS_COUNT_CHANGED);
+                          A(A.ENUM.CREATED_WALLET);
+                          ReactNativeHapticFeedback.trigger('notificationSuccess', false);
+                          this.props.navigation.dismiss();
                         }
-                        await w.createAccount();
-                        await w.authorize();
-                      } catch (Err) {
-                        console.warn('lnd create failure', Err);
-                        // giving app, not adding anything
-                      }
-                      A(A.ENUM.CREATED_LIGHTNING_WALLET);
-                    } else if (this.state.selectedIndex === 1) {
-                      // btc was selected
-                      // index 1 radio - segwit single address
-                      w = new SegwitP2SHWallet();
-                      w.setLabel(this.state.label || loc.wallets.add.label_new_segwit);
-                    } else {
-                      // zero index radio - HD segwit
-                      w = new HDSegwitP2SHWallet();
-                      w.setLabel((this.state.label || loc.wallets.add.label_new_segwit) + ' HD');
-                    }
-
-                    await w.generate();
-                    BlueApp.wallets.push(w);
-                    await BlueApp.saveToDisk();
-                    EV(EV.enum.WALLETS_COUNT_CHANGED);
-                    A(A.ENUM.CREATED_WALLET);
-                    ReactNativeHapticFeedback.trigger('notificationSuccess', false);
-                    this.props.navigation.dismiss();
-                  }, 1);
-                }}
-              />
+                      },
+                      1,
+                    );
+                  }}
+                />
+              ) : (
+                <ActivityIndicator />
+              )}
 
               <BlueButtonLink
                 title={loc.wallets.add.import_wallet}

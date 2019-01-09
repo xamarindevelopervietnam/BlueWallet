@@ -102,9 +102,9 @@ export class LightningCustodianWallet extends LegacyWallet {
     this.secret = 'lndhub://' + json.login + ':' + json.password;
   }
 
-  async payInvoice(invoice) {
+  async payInvoice(invoice, freeAmount = 0) {
     let response = await this._api.post('/payinvoice', {
-      body: { invoice: invoice },
+      body: { invoice: invoice, amount: freeAmount },
       headers: {
         'Access-Control-Allow-Origin': '*',
         'Content-Type': 'application/json',
@@ -338,7 +338,7 @@ export class LightningCustodianWallet extends LegacyWallet {
 
       if (tx.type === 'paid_invoice') {
         tx.memo = tx.memo || 'Lightning payment';
-        if (tx.value > 0) tx.value = (tx.value * 1 + tx.fee * 1) * -1;
+        if (tx.value > 0) tx.value = tx.value * -1; // value already includes fee in it (see lndhub)
         // outer code expects spending transactions to of negative value
       }
 

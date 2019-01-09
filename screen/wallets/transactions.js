@@ -33,8 +33,7 @@ export default class WalletTransactions extends Component {
           style={{ marginHorizontal: 8, minWidth: 150 }}
           onPress={() =>
             navigation.navigate('WalletDetails', {
-              address: navigation.state.params.wallet.getAddress(),
-              secret: navigation.state.params.wallet.getSecret(),
+              wallet: navigation.state.params.wallet,
             })
           }
         >
@@ -236,7 +235,7 @@ export default class WalletTransactions extends Component {
               color: '#fff',
             }}
           >
-            {loc.formatBalance(this.state.wallet.getBalance(), this.state.wallet.getPreferredBalanceUnit()).toString()}
+            {loc.formatBalance(this.state.wallet.getBalance(), this.state.wallet.getPreferredBalanceUnit(), true).toString()}
           </Text>
         </TouchableOpacity>
         <Text style={{ backgroundColor: 'transparent' }} />
@@ -303,21 +302,24 @@ export default class WalletTransactions extends Component {
 
   rowTitle = item => {
     if (item.type === 'user_invoice' || item.type === 'payment_request') {
+      if (isNaN(item.value)) {
+        item.value = 0;
+      }
       const currentDate = new Date();
       const now = (currentDate.getTime() / 1000) | 0;
       const invoiceExpiration = item.timestamp + item.expire_time;
 
       if (invoiceExpiration > now) {
-        return loc.formatBalanceWithoutSuffix(item.value && item.value, this.state.wallet.getPreferredBalanceUnit()).toString();
+        return loc.formatBalanceWithoutSuffix(item.value && item.value, this.state.wallet.getPreferredBalanceUnit(), true).toString();
       } else if (invoiceExpiration < now) {
         if (item.ispaid) {
-          return loc.formatBalanceWithoutSuffix(item.value && item.value, this.state.wallet.getPreferredBalanceUnit()).toString();
+          return loc.formatBalanceWithoutSuffix(item.value && item.value, this.state.wallet.getPreferredBalanceUnit(), true).toString();
         } else {
           return loc.lnd.expired;
         }
       }
     } else {
-      return loc.formatBalanceWithoutSuffix(item.value && item.value, this.state.wallet.getPreferredBalanceUnit()).toString();
+      return loc.formatBalanceWithoutSuffix(item.value && item.value, this.state.wallet.getPreferredBalanceUnit(), true).toString();
     }
   };
 
@@ -569,7 +571,9 @@ export default class WalletTransactions extends Component {
             backgroundColor: 'transparent',
             position: 'absolute',
             bottom: 30,
-            borderRadius: 15,
+            borderRadius: 30,
+            minHeight: 48,
+            flex: 0.84,
             overflow: 'hidden',
           }}
         >

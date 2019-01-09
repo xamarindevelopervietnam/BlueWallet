@@ -19,7 +19,7 @@ import { Icon } from 'react-native-elements';
 import { NavigationEvents } from 'react-navigation';
 import ReactNativeHapticFeedback from 'react-native-haptic-feedback';
 import PropTypes from 'prop-types';
-import { BitcoinUnit } from '../../models/bitcoinUnits';
+import { LightningCustodianWallet } from '../../class';
 let EV = require('../../events');
 let A = require('../../analytics');
 /** @type {AppStorage} */
@@ -231,21 +231,24 @@ export default class WalletsList extends Component {
 
   rowTitle = item => {
     if (item.type === 'user_invoice' || item.type === 'payment_request') {
+      if (isNaN(item.value)) {
+        item.value = '0';
+      }
       const currentDate = new Date();
       const now = (currentDate.getTime() / 1000) | 0;
       const invoiceExpiration = item.timestamp + item.expire_time;
 
       if (invoiceExpiration > now) {
-        return loc.formatBalanceWithoutSuffix(item.value && item.value, BitcoinUnit.BTC);
+        return loc.formatBalanceWithoutSuffix(item.value && item.value, item.walletPreferredBalanceUnit, true).toString();
       } else if (invoiceExpiration < now) {
         if (item.ispaid) {
-          return loc.formatBalanceWithoutSuffix(item.value && item.value, BitcoinUnit.BTC);
+          return loc.formatBalanceWithoutSuffix(item.value && item.value, item.walletPreferredBalanceUnit, true).toString();
         } else {
           return loc.lnd.expired;
         }
       }
     } else {
-      return loc.formatBalanceWithoutSuffix(item.value && item.value, BitcoinUnit.BTC);
+      return loc.formatBalanceWithoutSuffix(item.value && item.value, item.walletPreferredBalanceUnit, true).toString();
     }
   };
 
@@ -413,11 +416,20 @@ export default class WalletsList extends Component {
                         navigate('TransactionDetails', {
                           hash: rowData.item.hash,
                         });
-                      } else if (rowData.item.type === 'user_invoice') {
-                        // this.props.navigation.navigate('LNDViewInvoice', {
-                        //   invoice: rowData.item,
-                        //   fromWallet: this.state.wallets[this.state.lastSnappedTo],
-                        // });
+                      } else if (
+                        rowData.item.type === 'user_invoice' ||
+                        rowData.item.type === 'payment_request' ||
+                        rowData.item.type === 'paid_invoice'
+                      ) {
+                        const lightningWallet = this.state.wallets.filter(wallet => wallet.type === LightningCustodianWallet.type);
+                        if (typeof lightningWallet === 'object') {
+                          if (lightningWallet.length === 1) {
+                            this.props.navigation.navigate('LNDViewInvoice', {
+                              invoice: rowData.item,
+                              fromWallet: lightningWallet[0],
+                            });
+                          }
+                        }
                       }
                     }}
                     badge={{

@@ -87,6 +87,7 @@ export default class SendDetails extends Component {
       this.setState(
         { isLoading: false },
         () => {
+          data = data.replace('bitcoin:', '');
           if (btcAddressRx.test(data) || data.indexOf('bc1') === 0) {
             this.setState({
               address: data,
@@ -220,7 +221,7 @@ export default class SendDetails extends Component {
               .then(response => {
                 this.setState({
                   address: response.address,
-                  amount: loc.formatBalanceWithoutSuffix(response.amount, BitcoinUnit.BTC),
+                  amount: loc.formatBalanceWithoutSuffix(response.amount, BitcoinUnit.BTC, false),
                   memo: response.memo,
                   fee: response.fee,
                   bip70TransactionExpiration: response.expires,
@@ -229,7 +230,7 @@ export default class SendDetails extends Component {
               })
               .catch(error => {
                 alert(error.errorMessage);
-                this.setState({ address: text.replace(' ', ''), isLoading: false, bip70TransactionExpiration: null, amount: 0 });
+                this.setState({ isLoading: false, bip70TransactionExpiration: null });
               });
           },
         );

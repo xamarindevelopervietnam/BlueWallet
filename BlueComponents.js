@@ -1,3 +1,4 @@
+/* eslint react/prop-types: 0 */
 /** @type {AppStorage} */
 import React, { Component } from 'react';
 import Ionicons from 'react-native-vector-icons/Ionicons';
@@ -106,6 +107,7 @@ export class LightningButton extends Component {
   render() {
     return (
       <TouchableOpacity
+        disabled={this.props.disabled}
         onPress={() => {
           // eslint-disable-next-line
           if (this.props.onPress) this.props.onPress();
@@ -135,6 +137,10 @@ export class LightningButton extends Component {
     );
   }
 }
+
+LightningButton.propTypes = {
+  disabled: PropTypes.bool,
+};
 
 export class BlueButtonLink extends Component {
   render() {
@@ -717,28 +723,26 @@ export class BlueReceiveButtonIcon extends Component {
   render() {
     return (
       <TouchableOpacity {...this.props}>
-        <View>
-          <View
-            style={{
-              flex: 1,
-              flexDirection: 'row',
-              minWidth: 110,
-              minHeight: 40,
-              position: 'relative',
-              backgroundColor: '#ccddf9',
-              alignItems: 'center',
-            }}
-          >
+        <View
+          style={{
+            flex: 1,
+            minWidth: 130,
+            backgroundColor: '#ccddf9',
+          }}
+        >
+          <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center' }}>
             <View
               style={{
                 minWidth: 30,
                 minHeight: 30,
+                left: 5,
                 backgroundColor: 'transparent',
                 transform: [{ rotate: '-45deg' }],
                 alignItems: 'center',
+                marginBottom: -11,
               }}
             >
-              <Icon {...this.props} name="arrow-down" size={16} type="font-awesome" color="#2f5fb3" iconStyle={{ left: 5, top: 12 }} />
+              <Icon {...this.props} name="arrow-down" size={16} type="font-awesome" color="#2f5fb3" />
             </View>
             <Text
               style={{
@@ -749,7 +753,7 @@ export class BlueReceiveButtonIcon extends Component {
                 backgroundColor: 'transparent',
               }}
             >
-              {loc.receive.header.toLowerCase()}
+              {loc.receive.header}
             </Text>
           </View>
         </View>
@@ -762,18 +766,15 @@ export class BlueSendButtonIcon extends Component {
   render() {
     return (
       <TouchableOpacity {...this.props}>
-        <View>
-          <View
-            style={{
-              flex: 1,
-              flexDirection: 'row',
-              width: 110,
-              height: 40,
-              backgroundColor: '#ccddf9',
-              alignItems: 'center',
-              paddingLeft: 15,
-            }}
-          >
+        <View
+          style={{
+            flex: 1,
+            minWidth: 130,
+            backgroundColor: '#ccddf9',
+            alignItems: 'center',
+          }}
+        >
+          <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center' }}>
             <View
               style={{
                 minWidth: 30,
@@ -781,9 +782,10 @@ export class BlueSendButtonIcon extends Component {
                 left: 5,
                 backgroundColor: 'transparent',
                 transform: [{ rotate: '225deg' }],
+                marginBottom: 11,
               }}
             >
-              <Icon {...this.props} name="arrow-down" size={16} type="font-awesome" color="#2f5fb3" iconStyle={{ left: 2, top: 6 }} />
+              <Icon {...this.props} name="arrow-down" size={16} type="font-awesome" color="#2f5fb3" />
             </View>
             <Text
               style={{
@@ -793,7 +795,7 @@ export class BlueSendButtonIcon extends Component {
                 backgroundColor: 'transparent',
               }}
             >
-              {loc.send.header.toLowerCase()}
+              {loc.send.header}
             </Text>
           </View>
         </View>
@@ -806,22 +808,21 @@ export class ManageFundsBigButton extends Component {
   render() {
     return (
       <TouchableOpacity {...this.props}>
-        <View>
-          <View
-            style={{
-              flex: 1,
-              flexDirection: 'row',
-              minWidth: 160,
-              minHeight: 40,
-              backgroundColor: '#ccddf9',
-              alignItems: 'center',
-            }}
-          >
+        <View
+          style={{
+            flex: 1,
+            width: 168,
+            backgroundColor: '#ccddf9',
+          }}
+        >
+          <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center' }}>
             <View
               style={{
+                minWidth: 30,
+                minHeight: 30,
+                right: 5,
                 backgroundColor: 'transparent',
                 transform: [{ rotate: '90deg' }],
-                marginHorizontal: 10,
               }}
             >
               <Icon {...this.props} name="link" size={16} type="font-awesome" color="#2f5fb3" />
@@ -1060,7 +1061,7 @@ export class WalletsCarousel extends Component {
                 color: '#fff',
               }}
             >
-              {loc.formatBalance(Number(item.getBalance()), item.getPreferredBalanceUnit())}
+              {loc.formatBalance(Number(item.getBalance()), item.getPreferredBalanceUnit(), true)}
             </Text>
             <Text style={{ backgroundColor: 'transparent' }} />
             <Text
@@ -1121,18 +1122,32 @@ export class BlueBitcoinAmount extends Component {
     amount: PropTypes.oneOfType([PropTypes.string, PropTypes.number]),
     onChangeText: PropTypes.func,
     disabled: PropTypes.bool,
+    unit: PropTypes.string,
+  };
+
+  static defaultProps = {
+    unit: BitcoinUnit.BTC,
   };
 
   render() {
     const amount = typeof this.props.amount === 'number' ? this.props.amount.toString() : this.props.amount;
 
     return (
-      <TouchableWithoutFeedback onPress={() => this.textInput.focus()}>
+      <TouchableWithoutFeedback disabled={this.props.pointerEvents === 'none'} onPress={() => this.textInput.focus()}>
         <View>
           <View style={{ flexDirection: 'row', justifyContent: 'center', paddingTop: 16, paddingBottom: 16 }}>
             <TextInput
+              {...this.props}
               keyboardType="numeric"
-              onChangeText={text => this.props.onChangeText(text.replace(',', '.'))}
+              onChangeText={text => {
+                text = text.replace(',', '.');
+                text = this.props.unit === BitcoinUnit.BTC ? text.replace(/[^0-9.]/g, '') : text.replace(/[^0-9]/g, '');
+                text = text.replace(/(\..*)\./g, '$1');
+                if (text.startsWith('.')) {
+                  text = '0.';
+                }
+                this.props.onChangeText(text);
+              }}
               placeholder="0"
               maxLength={10}
               ref={textInput => (this.textInput = textInput)}
@@ -1155,12 +1170,16 @@ export class BlueBitcoinAmount extends Component {
                 alignSelf: 'flex-end',
               }}
             >
-              {' ' + BitcoinUnit.BTC}
+              {' ' + this.props.unit}
             </Text>
           </View>
           <View style={{ alignItems: 'center', marginBottom: 22, marginTop: 4 }}>
             <Text style={{ fontSize: 18, color: '#d4d4d4', fontWeight: '600' }}>
-              {loc.formatBalance(amount || 0, BitcoinUnit.LOCAL_CURRENCY)}
+              {loc.formatBalance(
+                this.props.unit === BitcoinUnit.BTC ? amount || 0 : loc.formatBalanceWithoutSuffix(amount || 0, BitcoinUnit.BTC, false),
+                BitcoinUnit.LOCAL_CURRENCY,
+                false,
+              )}
             </Text>
           </View>
         </View>

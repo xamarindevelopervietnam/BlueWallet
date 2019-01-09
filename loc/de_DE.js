@@ -8,10 +8,14 @@ module.exports = {
     hours_ago: 'Stunden zurück',
     minutes_ago: 'Minuten zurück',
     never: 'nie',
+    continue: 'Continue',
+    ok: 'OK',
   },
   wallets: {
     select_wallet: 'Wähle Wallet',
     options: 'Einstellungen',
+    createBitcoinWallet:
+      'In order to use a Lightning wallet, a Bitcoin wallet is needed in order to fund it. Please, create or import a Bitcoin wallet.',
     list: {
       app_name: 'Blue Wallet',
       title: 'Wallets',
@@ -210,5 +214,6 @@ module.exports = {
     refill_lnd_balance: 'Fülle deine Lightning Wallet auf',
     refill: 'Auffüllen',
     withdraw: 'Abheben',
+    sameWalletAsInvoiceError: 'You can not pay an invoice with the same wallet used to create it.',
   },
 };
